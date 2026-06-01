@@ -321,10 +321,11 @@ class LiveDataAggregator(
         )
     }
 
-    private fun category(category: FuelCategory, vararg fuels: Pair<FuelType, Double>): CategoryReading? {
-        val members = fuels.filter { it.second > 0.005 }.map { FuelReading(it.first, it.second) }
-        return if (members.isEmpty()) null
-        else CategoryReading(category, members.sumOf { it.gigawatts }, members)
+    private fun category(category: FuelCategory, vararg fuels: Pair<FuelType, Double>): CategoryReading {
+        // Keep every member fuel, even at 0.00 (e.g. Solar at night) — matches Kate,
+        // which shows "Solar 0.00 GW". Zero segments are skipped only in the bars.
+        val members = fuels.map { FuelReading(it.first, it.second) }
+        return CategoryReading(category, members.sumOf { it.gigawatts }, members)
     }
 
     private companion object {

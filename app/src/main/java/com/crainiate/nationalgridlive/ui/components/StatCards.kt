@@ -36,9 +36,10 @@ fun StatCardsRow(items: List<StatItem>, modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    Row {
                         Text(
                             text = item.value,
+                            modifier = Modifier.alignByBaseline(),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -47,7 +48,7 @@ fun StatCardsRow(items: List<StatItem>, modifier: Modifier = Modifier) {
                                 text = it,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 2.dp, bottom = 2.dp)
+                                modifier = Modifier.alignByBaseline().padding(start = 2.dp)
                             )
                         }
                     }
@@ -87,13 +88,13 @@ private fun Seg(label: String, value: Double, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
         )
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(text = gw1(value), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, fontSize = 19.sp)
+        Row {
+            Text(text = gw1(value), modifier = Modifier.alignByBaseline(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, fontSize = 19.sp)
             Text(
                 text = "GW",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                modifier = Modifier.padding(start = 2.dp, bottom = 1.dp)
+                modifier = Modifier.alignByBaseline().padding(start = 2.dp)
             )
         }
     }

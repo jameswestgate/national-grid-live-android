@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,7 +47,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -134,22 +137,33 @@ fun GenerationBars(
 
 @Composable
 private fun BarRow(segments: List<BarSeg>, onSelect: (GenerationSelection) -> Unit) {
-    Row(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(8.dp))) {
-        segments.forEach { seg ->
-            if (seg.fraction <= 0f) return@forEach
-            Box(
-                Modifier
-                    .weight(seg.fraction)
-                    .fillMaxHeight()
-                    .background(seg.color)
-                    .clickable { onSelect(seg.selection) },
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (seg.fraction > 0.10f) {
-                    Text(
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+    val density = LocalDensity.current
+    val total = segments.sumOf { it.fraction.toDouble() }.toFloat().coerceAtLeast(0.0001f)
+
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val rowWidthPx = with(density) { maxWidth.toPx() }
+        val textPadPx = with(density) { 13.dp.toPx() }   // start 9 + end 4
+        Row(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(8.dp))) {
+            segments.forEach { seg ->
+                if (seg.fraction <= 0f) return@forEach
+                val segPx = rowWidthPx * seg.fraction / total
+                val textWidthPx = measurer.measure(seg.label, labelStyle).size.width
+                // Show the full label only when it fits; otherwise leave the segment
+                // blank (no icon, no shrinking).
+                val showText = textWidthPx + textPadPx <= segPx
+                Box(
+                    Modifier
+                        .weight(seg.fraction)
+                        .fillMaxHeight()
+                        .background(seg.color)
+                        .clickable { onSelect(seg.selection) },
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (showText) Text(
                         text = seg.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = labelStyle,
                         color = onColor(seg.color),
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
@@ -291,13 +305,13 @@ fun SourceRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(gw(valueGw), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+            Row {
+                Text(gw(valueGw), modifier = Modifier.alignByBaseline(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
                 Text(
                     " GW",
+                    modifier = Modifier.alignByBaseline(),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 1.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(percent(percentOfDemand), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -322,21 +336,26 @@ private fun ChevronIcon(icon: ImageVector) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GenerationCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
-    var expanded by remember { mutableStateOf(setOf(FuelCategory.Renewable)) }
+    var expanded by remember { mutableStateOf(emptySet<FuelCategory>()) } // start collapsed
     val visualisation by SettingsRepository.visualisation.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val requesters = remember { FuelCategory.entries.associateWith { BringIntoViewRequester() } }
 
-    // Tapping a bar/donut slice expands that category and scrolls it into view.
+    // Tapping a bar/donut slice toggles its category: open + scroll if closed,
+    // close again if already open.
     fun select(selection: GenerationSelection) {
         val category = when (selection) {
             is GenerationSelection.Category -> selection.category
             is GenerationSelection.Fuel -> selection.type.category
         }
-        expanded = expanded + category
-        scope.launch {
-            delay(60) // let the expansion lay out before scrolling
-            requesters[category]?.bringIntoView()
+        if (category in expanded) {
+            expanded = expanded - category
+        } else {
+            expanded = expanded + category
+            scope.launch {
+                delay(60) // let the expansion lay out before scrolling
+                requesters[category]?.bringIntoView()
+            }
         }
     }
 
@@ -356,13 +375,13 @@ fun GenerationCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
                     fontSize = 22.sp
                 )
                 Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(gw1(snapshot.generationGw), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    Row {
+                        Text(gw1(snapshot.generationGw), modifier = Modifier.alignByBaseline(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         Text(
                             " GW",
+                            modifier = Modifier.alignByBaseline(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 3.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(

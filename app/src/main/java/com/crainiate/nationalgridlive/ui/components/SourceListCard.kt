@@ -50,13 +50,13 @@ fun SourceListCard(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
                 Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(gw1(totalGw), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    Row {
+                        Text(gw1(totalGw), modifier = Modifier.alignByBaseline(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         Text(
                             " GW",
+                            modifier = Modifier.alignByBaseline(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 3.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
