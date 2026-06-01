@@ -306,7 +306,9 @@ class LiveDataAggregator(
             category(FuelCategory.Other, FuelType.Nuclear to g(FuelType.Nuclear), FuelType.Biomass to g(FuelType.Biomass))
         )
         val interconnectors = Interconnector.entries.map { InterconnectorReading(it, icGw[it] ?: 0.0) }
-        val transfers = interconnectors.sumOf { it.gigawatts }
+        // Transfers = interconnectors + storage (pumped), matching grid.iamkate.com's
+        // `Transfers` grouping. Generation already excludes pumped; demand = gen + transfers.
+        val transfers = interconnectors.sumOf { it.gigawatts } + (pumpedGw ?: 0.0)
         return GridSnapshot(
             periodLabel = label,
             priceGbpPerMwh = price,

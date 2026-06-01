@@ -76,7 +76,9 @@ fun SourceListCard(
 @Composable
 fun InterconnectorsCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
     if (snapshot.interconnectors.isEmpty()) return
-    val total = snapshot.transfersGw
+    // The Interconnectors total is just the 6 countries; pumped lives in the Storage
+    // card. (The demand equation's "Transfers" = this + pumped — see transfersGw.)
+    val total = snapshot.interconnectors.sumOf { it.gigawatts }
     SourceListCard("Interconnectors", total, snapshot.shareOfDemand(total), modifier) {
         snapshot.interconnectors.forEachIndexed { index, reading ->
             if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(horizontal = 4.dp))

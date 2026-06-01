@@ -88,7 +88,8 @@ object SnapshotParser {
             j += 2
         }
         val icReadings = Interconnector.entries.map { InterconnectorReading(it, icMeans[it] ?: 0.0) }
-        val transfers = icReadings.sumOf { it.gigawatts }
+        // Transfers = interconnectors + pumped storage (matches Kate's Transfers grouping).
+        val transfers = icReadings.sumOf { it.gigawatts } + (pumpedMean ?: 0.0)
 
         val categories = FuelCategory.entries.mapNotNull { category ->
             val members = FuelType.entries

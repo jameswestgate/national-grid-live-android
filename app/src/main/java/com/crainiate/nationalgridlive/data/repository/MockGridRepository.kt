@@ -23,8 +23,8 @@ class MockGridRepository : GridRepository {
             periodLabel = "16:05",
             priceGbpPerMwh = 106.93,
             emissionsGPerKwh = 82,
-            demandGw = 26.7,
-            transfersGw = 6.6,
+            demandGw = 26.67,   // generation 19.87 + transfers 6.80 (interconnectors 6.60 + pumped 0.20)
+            transfersGw = 6.80,
             categories = listOf(
                 CategoryReading(
                     FuelCategory.Fossil, 3.39,
