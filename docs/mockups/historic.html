@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=412,height=915">
+<link rel="stylesheet" href="style.css">
+</head><body><div class="screen">
+  <div class="statusbar">
+    <span>16:14</span>
+    <span class="icons"><span class="msym">signal_cellular_alt</span><span class="msym">wifi</span><span class="msym">battery_full</span></span>
+  </div>
+
+  <header class="appbar">
+    <div class="appbar-actions">
+      <button class="icon-btn"><span class="msym">tune</span></button>
+    </div>
+    <div class="appbar-title">Historic</div>
+  </header>
+
+  <main class="content">
+    <!-- segmented buttons -->
+    <div class="segmented">
+      <button class="sel"><span class="msym">check</span>Past day</button>
+      <button>Past week</button>
+      <button>Past year</button>
+      <button>All time</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><span class="stat-label">PERIOD</span><span class="stat-value">Day</span></div>
+      <div class="stat-card"><span class="stat-label">PRICE</span><span class="stat-value">£107<span class="unit">/MWh</span></span></div>
+      <div class="stat-card"><span class="stat-label">EMISSIONS</span><span class="stat-value">140<span class="unit">g/kWh</span></span></div>
+    </div>
+
+    <div class="demand">
+      <div class="seg"><span class="l">DEMAND</span><span class="v">25.5<small>GW</small></span></div>
+      <span class="op">=</span>
+      <div class="seg"><span class="l">GENERATION</span><span class="v">20.9<small>GW</small></span></div>
+      <span class="op">+</span>
+      <div class="seg"><span class="l">TRANSFERS</span><span class="v">4.6<small>GW</small></span></div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-head">
+        <span class="h-title">Generation</span>
+        <div class="h-right">
+          <div class="h-gw">20.9<small>GW</small></div>
+          <div class="h-sub">81.8% of demand</div>
+        </div>
+      </div>
+
+      <div class="bars">
+        <div class="bar">
+          <div class="seg-b" style="flex:35;background:var(--cat-fossil)">Fossil</div>
+          <div class="seg-b" style="flex:46;background:var(--cat-renew)">Renewables</div>
+          <div class="seg-b" style="flex:19;background:var(--cat-other)">Other</div>
+        </div>
+        <div class="bar">
+          <div class="seg-b" style="flex:35;background:var(--gas)">Gas</div>
+          <div class="seg-b" style="flex:22;background:var(--wind);color:#1b2a08">Wind</div>
+          <div class="seg-b" style="flex:23;background:var(--solar);color:#2b2700">Solar</div>
+          <div class="seg-b" style="flex:1;background:var(--hydro)"></div>
+          <div class="seg-b" style="flex:19;background:var(--nuclear)">Nuclear</div>
+        </div>
+      </div>
+
+      <div class="rows">
+        <div class="row">
+          <div class="lead" style="background:#f7dbe1"><span class="msym" style="color:var(--cat-fossil)">local_fire_department</span></div>
+          <div class="body"><div class="name">Fossil Fuels</div>
+            <div class="prog"><i style="width:35%;background:var(--cat-fossil)"></i></div></div>
+          <div class="trail"><div class="v">7.37<small> GW</small></div><div class="p">28.9%</div></div>
+          <div class="chev"><span class="msym">chevron_right</span></div>
+        </div>
+        <div class="divider"></div>
+
+        <div class="group">
+          <div class="row">
+            <div class="lead" style="background:#dcefd0"><span class="msym" style="color:var(--cat-renew)">eco</span></div>
+            <div class="body"><div class="name">Renewables</div>
+              <div class="prog"><i style="width:46%;background:var(--cat-renew)"></i></div></div>
+            <div class="trail"><div class="v">9.54<small> GW</small></div><div class="p">37.3%</div></div>
+            <div class="chev"><span class="msym">expand_more</span></div>
+          </div>
+          <div class="row member">
+            <div class="lead" style="background:#e7f4d8;width:34px;height:34px"><span class="msym" style="color:var(--wind);font-size:19px">air</span></div>
+            <div class="body"><div class="name">Wind</div>
+              <div class="prog"><i style="width:47%;background:var(--wind)"></i></div></div>
+            <div class="trail"><div class="v">4.52<small> GW</small></div><div class="p">17.7%</div></div>
+            <div class="chev"></div>
+          </div>
+          <div class="row member">
+            <div class="lead" style="background:#faf3c2;width:34px;height:34px"><span class="msym" style="color:#b8a400;font-size:19px">wb_sunny</span></div>
+            <div class="body"><div class="name">Solar</div>
+              <div class="prog"><i style="width:50%;background:var(--solar)"></i></div></div>
+            <div class="trail"><div class="v">4.81<small> GW</small></div><div class="p">18.8%</div></div>
+            <div class="chev"></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+
+        <div class="row">
+          <div class="lead" style="background:#d4e6f5"><span class="msym" style="color:var(--cat-other)">more_horiz</span></div>
+          <div class="body"><div class="name">Other Sources</div>
+            <div class="prog"><i style="width:19%;background:var(--cat-other)"></i></div></div>
+          <div class="trail"><div class="v">3.99<small> GW</small></div><div class="p">15.6%</div></div>
+          <div class="chev"><span class="msym">chevron_right</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="navbar">
+    <div class="nav-item"><div class="nav-pill"><span class="msym">bolt</span></div><span class="nav-label">Live</span></div>
+    <div class="nav-item active"><div class="nav-pill"><span class="msym">show_chart</span></div><span class="nav-label">Historic</span></div>
+    <div class="nav-item"><div class="nav-pill"><span class="msym">info</span></div><span class="nav-label">About</span></div>
+  </nav>
+</div></body></html>

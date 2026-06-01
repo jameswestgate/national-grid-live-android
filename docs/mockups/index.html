@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
+  body { margin:0; background:#202124; font-family:'Roboto',system-ui,sans-serif; padding:28px; }
+  .rail { display:flex; gap:28px; align-items:flex-start; }
+  .phone { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .frame { width:412px; height:915px; border-radius:44px; overflow:hidden;
+           box-shadow:0 12px 40px rgba(0,0,0,.55); border:2px solid #000; }
+  iframe { width:412px; height:915px; border:0; display:block; }
+  .cap { color:#e3e3e3; font-size:15px; font-weight:500; letter-spacing:.2px; }
+</style></head><body>
+  <div class="rail">
+    <div class="phone"><div class="frame"><iframe src="live.html"></iframe></div><div class="cap">Live</div></div>
+    <div class="phone"><div class="frame"><iframe src="historic.html"></iframe></div><div class="cap">Historic</div></div>
+    <div class="phone"><div class="frame"><iframe src="about.html"></iframe></div><div class="cap">About</div></div>
+    <div class="phone"><div class="frame"><iframe src="live-dark.html"></iframe></div><div class="cap">Live · dark</div></div>
+  </div>
+</body></html>

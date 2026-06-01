@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window backgrounds — kept in sync with the Compose surface tokens so
+         there is no flash before Compose draws. -->
+    <color name="surface_light">#FBFDF6</color>
+    <color name="surface_dark">#101510</color>
+</resources>
