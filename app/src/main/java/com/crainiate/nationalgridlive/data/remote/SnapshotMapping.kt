@@ -116,9 +116,16 @@ object SnapshotParser {
 
     private fun SeriesDto.toSeries(period: Period): GridTimeSeries {
         val fuelSeries = HashMap<FuelType, List<Double?>>()
+        var pumpedSeries: List<Double?> = emptyList()
         var i = 0
         while (i + 1 < fuels.size) {
-            fuelByKey(fuels[i].jsonPrimitive.content)?.let { fuelSeries[it] = fuels[i + 1].toDoubleList() }
+            val name = fuels[i].jsonPrimitive.content
+            val values = fuels[i + 1].toDoubleList()
+            val type = fuelByKey(name)
+            when {
+                type != null -> fuelSeries[type] = values
+                name.equals("pumped", ignoreCase = true) -> pumpedSeries = values
+            }
             i += 2
         }
         val icSeries = HashMap<Interconnector, List<Double?>>()
@@ -135,7 +142,8 @@ object SnapshotParser {
             emissions = emissions,
             demand = demand,
             fuels = fuelSeries,
-            interconnectors = icSeries
+            interconnectors = icSeries,
+            pumped = pumpedSeries
         )
     }
 

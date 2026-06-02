@@ -15,6 +15,7 @@ object SettingsRepository {
     private const val PREFS = "settings"
     private const val KEY_THEME = "appTheme"
     private const val KEY_VISUALISATION = "generationVisualisation"
+    private const val KEY_GRAPH_LEGENDS = "showGraphLegends"
 
     private lateinit var prefs: SharedPreferences
 
@@ -24,6 +25,10 @@ object SettingsRepository {
     private val _visualisation = MutableStateFlow(GenerationVisualisation.Bar)
     val visualisation: StateFlow<GenerationVisualisation> = _visualisation.asStateFlow()
 
+    private val _showGraphLegends = MutableStateFlow(false)
+    /** Settings → Charts → "Show graph legends" (default off). */
+    val showGraphLegends: StateFlow<Boolean> = _showGraphLegends.asStateFlow()
+
     fun init(context: Context) {
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _theme.value = prefs.getString(KEY_THEME, null)?.let { runCatching { AppTheme.valueOf(it) }.getOrNull() }
@@ -31,6 +36,7 @@ object SettingsRepository {
         _visualisation.value = prefs.getString(KEY_VISUALISATION, null)
             ?.let { runCatching { GenerationVisualisation.valueOf(it) }.getOrNull() }
             ?: GenerationVisualisation.Bar
+        _showGraphLegends.value = prefs.getBoolean(KEY_GRAPH_LEGENDS, false)
     }
 
     fun setTheme(value: AppTheme) {
@@ -41,5 +47,10 @@ object SettingsRepository {
     fun setVisualisation(value: GenerationVisualisation) {
         _visualisation.value = value
         prefs.edit().putString(KEY_VISUALISATION, value.name).apply()
+    }
+
+    fun setShowGraphLegends(value: Boolean) {
+        _showGraphLegends.value = value
+        prefs.edit().putBoolean(KEY_GRAPH_LEGENDS, value).apply()
     }
 }

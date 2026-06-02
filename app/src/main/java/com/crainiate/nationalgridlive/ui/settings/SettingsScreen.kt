@@ -20,6 +20,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +38,7 @@ import com.crainiate.nationalgridlive.ui.components.ScreenTitle
 fun SettingsScreen() {
     val theme by SettingsRepository.theme.collectAsStateWithLifecycle()
     val visualisation by SettingsRepository.visualisation.collectAsStateWithLifecycle()
+    val showLegends by SettingsRepository.showGraphLegends.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -48,26 +50,31 @@ fun SettingsScreen() {
     ) {
         ScreenTitle("Settings")
 
-        Label("Appearance")
-        SegmentedRow(
-            options = AppTheme.entries,
-            selected = theme,
-            labelOf = { it.displayName },
-            onSelect = SettingsRepository::setTheme
-        )
-
-        Label("Generation chart", topPadding = 20.dp)
+        Label("Charts")
         SegmentedRow(
             options = GenerationVisualisation.entries,
             selected = visualisation,
             labelOf = { it.displayName },
             onSelect = SettingsRepository::setVisualisation
         )
-        Text(
-            "How the generation mix is shown at the top of the Generation card.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp)
+        Row(
+            Modifier.fillMaxWidth().padding(top = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Show graph legends",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(checked = showLegends, onCheckedChange = SettingsRepository::setShowGraphLegends)
+        }
+
+        Label("Appearance", topPadding = 24.dp)
+        SegmentedRow(
+            options = AppTheme.entries,
+            selected = theme,
+            labelOf = { it.displayName },
+            onSelect = SettingsRepository::setTheme
         )
 
         Label("Lock screen", topPadding = 24.dp)

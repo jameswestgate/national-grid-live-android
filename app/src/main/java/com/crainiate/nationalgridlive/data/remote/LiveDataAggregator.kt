@@ -91,12 +91,12 @@ class LiveDataAggregator(
         }
     }
 
-    /** Bucketed time series for the Trends charts (Day = 30-min, Week = hourly). */
+    /** Bucketed time series for the Trends charts (Day = 30-min, Week = 7 daily points, like the site). */
     suspend fun series(period: Period): GridTimeSeries {
         val s = refreshed()
         val (from, to) = windowBounds(s, period)
         val (stride, gran) = if (period == Period.Week) {
-            ONE_HOUR to ChartGranularity.Hour
+            ONE_DAY to ChartGranularity.Day
         } else {
             ApiTime.HALF_HOUR to ChartGranularity.HalfHour
         }
@@ -107,28 +107,32 @@ class LiveDataAggregator(
         val price = ArrayList<Double?>()
         val emissions = ArrayList<Double?>()
         val demand = ArrayList<Double?>()
+        val pumped = ArrayList<Double?>()
         val fuels = FuelType.entries.associateWith { ArrayList<Double?>() }
         val ics = Interconnector.entries.associateWith { ArrayList<Double?>() }
 
         while (!b.isAfter(end)) {
             val be = b.plusSeconds(stride)
             val agg = aggregateRange(s, ApiTime.iso(b), ApiTime.iso(be))
-            dates.add(ApiTime.iso(b))
+            // Date-string format must match the granularity for chart labelling.
+            dates.add(if (gran == ChartGranularity.Day) ApiTime.iso(b).take(10) else ApiTime.iso(b))
             price.add(agg.price)
             emissions.add(agg.emissions?.toDouble())
             if (agg.hasGen) {
                 // demand = generation (fuels excl. pumped) + transfers (ICs + pumped)
                 demand.add(agg.fuelGw.values.sum() + agg.icGw.values.sum() + (agg.pumped ?: 0.0))
+                pumped.add(agg.pumped ?: 0.0)
                 FuelType.entries.forEach { fuels.getValue(it).add(agg.fuelGw[it] ?: 0.0) }
                 Interconnector.entries.forEach { ics.getValue(it).add(agg.icGw[it] ?: 0.0) }
             } else {
                 demand.add(null)
+                pumped.add(null)
                 FuelType.entries.forEach { fuels.getValue(it).add(null) }
                 Interconnector.entries.forEach { ics.getValue(it).add(null) }
             }
             b = be
         }
-        return GridTimeSeries(period, gran, dates, price, emissions, demand, fuels, ics)
+        return GridTimeSeries(period, gran, dates, price, emissions, demand, fuels, ics, pumped)
     }
 
     /* ---------------- incremental refresh ---------------- */

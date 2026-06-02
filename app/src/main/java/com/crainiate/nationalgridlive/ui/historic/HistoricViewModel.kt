@@ -24,12 +24,20 @@ class HistoricViewModel : ViewModel() {
     private val _series = MutableStateFlow<GridTimeSeries?>(null)
     val series = _series.asStateFlow()
 
+    /** All four periods' series — the charts share one y-axis per metric across
+     *  every tab (the site's Axes.php behaviour), so the axes need them all. */
+    private val _axesSeries = MutableStateFlow<List<GridTimeSeries>>(emptyList())
+    val axesSeries = _axesSeries.asStateFlow()
+
     private val _refreshing = MutableStateFlow(false)
     val refreshing = _refreshing.asStateFlow()
 
     val online = repository.online
 
-    init { load(Period.Day, initial = true) }
+    init {
+        load(Period.Day, initial = true)
+        viewModelScope.launch { loadAxesSeries() }
+    }
 
     fun select(period: Period) {
         if (period == _period.value && _state.value is GridUiState.Ready) return
@@ -45,8 +53,15 @@ class HistoricViewModel : ViewModel() {
                 repository.refresh()
             }
             loadSuspend(_period.value, initial = false)
+            if (force) loadAxesSeries()
             _refreshing.value = false
         }
+    }
+
+    private suspend fun loadAxesSeries() {
+        _axesSeries.value = Period.entries
+            .mapNotNull { p -> runCatching { repository.series(p) }.getOrNull() }
+            .filter { !it.isEmpty }
     }
 
     private fun load(period: Period, initial: Boolean) {

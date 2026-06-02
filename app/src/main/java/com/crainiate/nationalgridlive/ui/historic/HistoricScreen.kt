@@ -22,6 +22,7 @@ fun HistoricScreen(viewModel: HistoricViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val period by viewModel.period.collectAsStateWithLifecycle()
     val series by viewModel.series.collectAsStateWithLifecycle()
+    val axesSeries by viewModel.axesSeries.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val online by viewModel.online.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh(force = false) }
@@ -44,6 +45,6 @@ fun HistoricScreen(viewModel: HistoricViewModel = viewModel()) {
         GenerationCard(snapshot)
         InterconnectorsCard(snapshot)
         StorageCard(snapshot)
-        series?.let { TrendsSection(it) }
+        series?.let { TrendsSection(it, axesSeries) }
     }
 }

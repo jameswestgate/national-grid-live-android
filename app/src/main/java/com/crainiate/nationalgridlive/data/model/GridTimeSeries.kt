@@ -17,7 +17,9 @@ data class GridTimeSeries(
     val emissions: List<Double?>,
     val demand: List<Double?>,
     val fuels: Map<FuelType, List<Double?>>,
-    val interconnectors: Map<Interconnector, List<Double?>>
+    val interconnectors: Map<Interconnector, List<Double?>>,
+    /** Pumped storage per bucket — drawn as a TRANSFER line on the site's graphs. */
+    val pumped: List<Double?> = emptyList()
 ) {
     val isEmpty: Boolean get() = dates.size < 2
 
@@ -29,7 +31,8 @@ data class GridTimeSeries(
 
         fun granularityFor(period: Period): ChartGranularity = when (period) {
             Period.Day -> ChartGranularity.HalfHour
-            Period.Week -> ChartGranularity.Hour
+            // The site's week tab plots its 7 daily rows, not hourly buckets.
+            Period.Week -> ChartGranularity.Day
             Period.Year -> ChartGranularity.Day
             Period.AllTime -> ChartGranularity.Month
         }
