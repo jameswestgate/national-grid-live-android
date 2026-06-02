@@ -64,6 +64,25 @@ data class GridSnapshot(
     fun shareOfGeneration(gw: Double): Double = if (generationGw > 0) gw / generationGw else 0.0
 
     val allFuels: List<FuelReading> get() = categories.flatMap { it.fuels }
+
+    // Equation display values (match grid.iamkate.com exactly): the site rounds
+    // each category total and transfers to 1 dp BEFORE summing (State/Demand.php),
+    // so the displayed "Demand = Generation + Transfers" always adds up on
+    // screen; the Generation card headline GW uses the same rounded-sum
+    // (PieChart.php). Percentages, by contrast, use the FULL-precision values
+    // (Datum::getTotal()) — keep shareOfDemand()/demandGw for those.
+
+    /** Generation as displayed in the equation: Σ of 1 dp-rounded category totals. */
+    val equationGeneration: Double get() = categories.sumOf { r1(it.gigawatts) }
+
+    /** Transfers as displayed in the equation: 1 dp-rounded (may be negative). */
+    val equationTransfers: Double get() = r1(transfersGw)
+
+    /** Demand as displayed in the equation: sum of the two rounded terms above. */
+    val equationDemand: Double get() = equationGeneration + equationTransfers
+
+    // kotlin.math.round ties away from zero — same as PHP round() / Swift rounded()
+    private fun r1(v: Double): Double = kotlin.math.round(v * 10.0) / 10.0
 }
 
 /** Historic look-back windows. */

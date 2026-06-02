@@ -376,7 +376,10 @@ fun GenerationCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     Row {
-                        Text(gw1(snapshot.generationGw), modifier = Modifier.alignByBaseline(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                        // Headline GW = the site's rounded-sum generation (Σ of 1 dp-
+                        // rounded categories) so it always equals the equation strip;
+                        // the "% of demand" caption stays full-precision, like the site.
+                        Text(gw1(snapshot.equationGeneration), modifier = Modifier.alignByBaseline(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         Text(
                             " GW",
                             modifier = Modifier.alignByBaseline(),

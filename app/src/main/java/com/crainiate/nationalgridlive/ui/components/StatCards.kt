@@ -67,15 +67,18 @@ fun DemandCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         shape = MaterialTheme.shapes.extraLarge
     ) {
+        // The equation uses the site's display rule (State/Demand.php): each term
+        // rounded to 1 dp BEFORE summing, so Demand = Generation + Transfers
+        // always adds up on screen. Negative transfers flip the operator to "−".
         Row(
             Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Seg("Demand", snapshot.demandGw, Modifier.weight(1f))
+            Seg("Demand", snapshot.equationDemand, Modifier.weight(1f))
             Operator("=")
-            Seg("Generation", snapshot.generationGw, Modifier.weight(1f))
-            Operator("+")
-            Seg("Transfers", snapshot.transfersGw, Modifier.weight(1f))
+            Seg("Generation", snapshot.equationGeneration, Modifier.weight(1f))
+            Operator(if (snapshot.equationTransfers < 0) "−" else "+")
+            Seg("Transfers", kotlin.math.abs(snapshot.equationTransfers), Modifier.weight(1f))
         }
     }
 }

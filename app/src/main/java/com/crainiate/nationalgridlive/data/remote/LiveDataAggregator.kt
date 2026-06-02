@@ -13,9 +13,11 @@ import com.crainiate.nationalgridlive.data.model.GridTimeSeries
 import com.crainiate.nationalgridlive.data.model.Interconnector
 import com.crainiate.nationalgridlive.data.model.InterconnectorReading
 import com.crainiate.nationalgridlive.data.model.Period
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
@@ -27,16 +29,18 @@ import kotlin.math.roundToInt
 
 /**
  * Ported from the iOS `LiveDataAggregator`. Polls the open APIs, merges only the
- * deltas since the last refresh into an append-only on-disk [LiveDataStore]
- * (trimmed to 7 days), and composes views from the cache:
- *  - **current** — latest 5-min FUELINST slot + the matching 30-min emissions/
- *    price/embedded buckets (anchor logic mirrors the website's KPI selection).
- *  - **day / week** — mean of all cached buckets over the last 24h / 7d.
+ * deltas since the last refresh into an append-only on-disk [LiveDataStore],
+ * and composes views that match grid.iamkate.com exactly:
+ *  - **current** — latest 5-min FUELINST slot + the latest COMPLETE half-hour's
+ *    embedded/price/emissions (Kate's `Database.php` latest-state merge).
+ *  - **day** — the last 48 complete half-hours; **week** — the 7 most recent
+ *    complete UTC days, excluding today.
  *
- * Because each refresh asks each source for `[lastBucket, now]`, the only large
- * fetch is the first-launch FUELINST window (capped at 24h) — never the whole
- * 7-day series. The 30-min sources (price/emissions/embedded) seed the full week
- * cheaply; generation fills to a true 7-day window as the app is used.
+ * The store reaches back to the UTC midnight 7 days before today's (the week
+ * window start, ~8 days); a source whose cache doesn't reach that far is
+ * re-fetched in full once (first launch / upgrade / long offline gap), after
+ * which refreshes are incremental from the newest cached bucket. Embedded
+ * rows are upserted wholesale every refresh, mirroring the site.
  */
 class LiveDataAggregator(
     private val cache: LiveDataCache,
@@ -62,24 +66,42 @@ class LiveDataAggregator(
 
     suspend fun window(period: Period): GridSnapshot {
         val s = refreshed()
-        val now = Instant.now()
-        val span = if (period == Period.Week) SEVEN_DAYS else ONE_DAY
-        val snapshot = composeWindow(s, now.minusSeconds(span), now, period.label)
+        val (from, to) = windowBounds(s, period)
+        val snapshot = composeWindow(s, from, to, period.label)
         check(snapshot.generationGw > 0.0) { "no windowed data available" }
         return snapshot
+    }
+
+    /**
+     * Site-matching window bounds (half-open `[from, to)`):
+     *  - **Day** = the last 48 COMPLETE half-hours, the newest being
+     *    floor((latest 5-min reading − 25 min)/30 min) — never a partial bucket
+     *    (Kate: `past_half_hours ORDER BY time DESC LIMIT 48`).
+     *  - **Week** = the 7 most recent complete UTC days, EXCLUDING the partial
+     *    current day (Kate: `past_days ORDER BY time DESC LIMIT 1,7`).
+     */
+    private fun windowBounds(s: LiveDataStore, period: Period): Pair<Instant, Instant> {
+        val latest = s.latestGenerationInstant() ?: Instant.now()
+        return if (period == Period.Week) {
+            val todayMidnight = ApiTime.bucket(latest, ONE_DAY)
+            todayMidnight.minusSeconds(SEVEN_DAYS) to todayMidnight
+        } else {
+            val lastComplete = ApiTime.bucket(latest.minusSeconds(25 * 60), ApiTime.HALF_HOUR)
+            lastComplete.minusSeconds(47 * ApiTime.HALF_HOUR) to lastComplete.plusSeconds(ApiTime.HALF_HOUR)
+        }
     }
 
     /** Bucketed time series for the Trends charts (Day = 30-min, Week = hourly). */
     suspend fun series(period: Period): GridTimeSeries {
         val s = refreshed()
-        val now = Instant.now()
-        val (span, stride, gran) = if (period == Period.Week) {
-            Triple(SEVEN_DAYS, ONE_HOUR, ChartGranularity.Hour)
+        val (from, to) = windowBounds(s, period)
+        val (stride, gran) = if (period == Period.Week) {
+            ONE_HOUR to ChartGranularity.Hour
         } else {
-            Triple(ONE_DAY, ApiTime.HALF_HOUR, ChartGranularity.HalfHour)
+            ApiTime.HALF_HOUR to ChartGranularity.HalfHour
         }
-        val end = ApiTime.bucket(now, stride)
-        var b = ApiTime.bucket(now.minusSeconds(span), stride)
+        val end = to.minusSeconds(stride)   // last bucket starts one stride before the window end
+        var b = ApiTime.bucket(from, stride)
 
         val dates = ArrayList<String>()
         val price = ArrayList<Double?>()
@@ -95,7 +117,8 @@ class LiveDataAggregator(
             price.add(agg.price)
             emissions.add(agg.emissions?.toDouble())
             if (agg.hasGen) {
-                demand.add(agg.fuelGw.values.sum() + agg.icGw.values.sum())
+                // demand = generation (fuels excl. pumped) + transfers (ICs + pumped)
+                demand.add(agg.fuelGw.values.sum() + agg.icGw.values.sum() + (agg.pumped ?: 0.0))
                 FuelType.entries.forEach { fuels.getValue(it).add(agg.fuelGw[it] ?: 0.0) }
                 Interconnector.entries.forEach { ics.getValue(it).add(agg.icGw[it] ?: 0.0) }
             } else {
@@ -124,18 +147,30 @@ class LiveDataAggregator(
         s
     }
 
-    private suspend fun fetchAndMerge(s: LiveDataStore, now: Instant): LiveDataStore {
-        val sevenDaysAgo = now.minusSeconds(SEVEN_DAYS)
-        val seed = now.minusSeconds(ONE_DAY)
+    // The whole fetch+parse+merge runs on IO: the one-time coverage backfill
+    // parses ~46k FUELINST items, far too heavy for the main dispatcher (it
+    // blocked the first frame long enough for an ActivityManager start-timeout
+    // kill on a slow emulator).
+    private suspend fun fetchAndMerge(s: LiveDataStore, now: Instant): LiveDataStore = withContext(Dispatchers.IO) {
+        // The site's "Past week" averages the 7 most recent COMPLETE UTC days
+        // (excluding today), so the store must reach back to the UTC midnight 7
+        // days before today's — up to ~8 days of data. When a source's cache
+        // doesn't reach that far (first launch, upgrade, long offline gap) we
+        // re-fetch its whole window once; afterwards refreshes are incremental
+        // from the newest cached bucket. (FUELINST accepts the full ~8-day range
+        // in one request, ~8 MB; the market index is chunked — its API rejects
+        // ranges over 7 days; Carbon Intensity allows 14 days.)
+        val coverageStart = ApiTime.bucket(now, ONE_DAY).minusSeconds(SEVEN_DAYS)
 
-        // FUELINST (5-min): incremental from the last cached bucket, but cap the
-        // catch-up at 24h so a long absence never triggers a multi-MB pull.
-        val genFrom = s.latestGenerationInstant()
-            ?.let { maxOf(it, now.minusSeconds(ONE_DAY)) } ?: seed
-        // 30-min sources are cheap even over the full week → seed the whole window.
-        val emisFrom = s.latestEmissionsInstant() ?: sevenDaysAgo
-        val priceFrom = s.latestPriceInstant() ?: sevenDaysAgo
-        val embedFrom = s.latestEmbeddedInstant() ?: sevenDaysAgo
+        // 1h slack so a missing bucket right at the boundary doesn't force a
+        // full re-fetch on every refresh.
+        fun fetchFrom(latest: Instant?, earliest: Instant?): Instant =
+            if (latest != null && earliest != null &&
+                !earliest.isAfter(coverageStart.plusSeconds(ONE_HOUR))) latest else coverageStart
+
+        val genFrom = fetchFrom(s.latestGenerationInstant(), s.earliestGenerationInstant())
+        val emisFrom = fetchFrom(s.latestEmissionsInstant(), s.earliestEmissionsInstant())
+        val priceFrom = fetchFrom(s.latestPriceInstant(), s.earliestPriceInstant())
 
         val genResult = runCatching { api.fetchFuelInst(genFrom, now) }
         genResult.onSuccess { items ->
@@ -147,7 +182,7 @@ class LiveDataAggregator(
         }.onFailure { Log.w(TAG, "generation fetch failed", it) }
         _online.value = genResult.isSuccess
 
-        runCatching { api.fetchMarketIndex(priceFrom, now) }.onSuccess { items ->
+        runCatching { fetchMarketIndexChunked(priceFrom, now) }.onSuccess { items ->
             items.forEach { item ->
                 val t = ApiTime.parse(item.startTime) ?: return@forEach
                 s.price[ApiTime.bucketKey(t, ApiTime.HALF_HOUR)] = item.price
@@ -162,38 +197,52 @@ class LiveDataAggregator(
         }.onFailure { Log.w(TAG, "emissions fetch failed", it) }
 
         runCatching { api.fetchEmbedded() }.onSuccess { rows ->
-            rows.filter { !it.instant.isBefore(embedFrom) }.forEach { row ->
+            // Upsert EVERY row on every refresh: NESO revises recent (often
+            // forecast-flagged) periods and the site re-reads the whole CSV each
+            // cron run (ON DUPLICATE KEY UPDATE), so frozen first-fetch values
+            // drift from it. The old `latestEmbedded` incremental filter was also
+            // defeated by the CSV's future forecast rows (max key ≈ +7 days),
+            // which blocked all updates forever. The CSV is one download anyway.
+            rows.forEach { row ->
                 val key = ApiTime.bucketKey(row.instant, ApiTime.HALF_HOUR)
                 s.embeddedWind[key] = row.windMw
                 s.embeddedSolar[key] = row.solarMw
             }
         }.onFailure { Log.w(TAG, "embedded (NESO) fetch failed", it) }
 
-        s.trim(ApiTime.iso(sevenDaysAgo))
+        s.trim(ApiTime.iso(coverageStart))
         s.lastFetchedAt = ApiTime.iso(now)
         cache.write(s)
-        return s
+        s
     }
 
-    /* ---------------- current point (iOS anchor logic) ---------------- */
+    /** The market-index endpoint rejects ranges over 7 days; fetch in chunks. */
+    private suspend fun fetchMarketIndexChunked(from: Instant, to: Instant): List<PriceItem> {
+        val out = ArrayList<PriceItem>()
+        var start = from
+        val maxChunk = (6.5 * 24 * 60 * 60).toLong()
+        while (start.isBefore(to)) {
+            val end = minOf(start.plusSeconds(maxChunk), to)
+            out += api.fetchMarketIndex(start, end)
+            start = end
+        }
+        return out
+    }
+
+    /* ---------------- current point (Kate's latest-state rule) ---------------- */
 
     private fun composeCurrent(s: LiveDataStore, now: Instant): GridSnapshot {
-        val anchorKey = s.emissions.keys.maxOrNull()
-            ?: s.price.keys.maxOrNull()
-            ?: s.embeddedWind.keys.maxOrNull()
-        val anchorStart = anchorKey?.let(ApiTime::parse)
-
-        // Generation slot: latest 5-min start within the half-hour AFTER the
-        // anchor (the current fuel mix); else the latest available slot.
-        val slotKey: String? = if (anchorStart != null) {
-            val anchorEnd = anchorStart.plusSeconds(ApiTime.HALF_HOUR)
-            val limit = anchorEnd.plusSeconds(ApiTime.HALF_HOUR)
-            s.generation.keys
-                .filter { k -> ApiTime.parse(k)?.let { !it.isBefore(anchorEnd) && it.isBefore(limit) } == true }
-                .maxOrNull() ?: s.generation.keys.maxOrNull()
-        } else {
-            s.generation.keys.maxOrNull()
-        }
+        // Kate's Database.php composes the live state as merge(latest complete
+        // half-hour row, latest five-minute row): the latest 5-min FUELINST slot
+        // supplies the displayed time + fuel mix, and the latest COMPLETE
+        // half-hour — floor((slot − 25 min) / 30 min) — supplies embedded
+        // solar/wind, price AND emissions. A 14:00 reading therefore pairs with
+        // the 13:30 embedded row even though NESO has already published a
+        // fresher 14:00 forecast row (verified vs the site 2026-06-02; iOS
+        // LiveDataAggregator.currentPoint mirrors the same rule).
+        val slotKey = s.generation.keys.maxOrNull()
+        val slotStart = slotKey?.let(ApiTime::parse)
+        val anchorKey = slotStart?.let { ApiTime.bucketKey(it.minusSeconds(25L * 60), ApiTime.HALF_HOUR) }
 
         val fuelGw = HashMap<FuelType, Double>()
         val icGw = HashMap<Interconnector, Double>()
@@ -209,20 +258,25 @@ class LiveDataAggregator(
             }
         }
 
-        // Embedded for the half-hour containing the slot (or the latest before it).
-        val slotStart = slotKey?.let(ApiTime::parse)
-        if (slotStart != null) {
-            val hhKey = ApiTime.bucketKey(slotStart, ApiTime.HALF_HOUR)
-            val embKey = if (s.embeddedWind.containsKey(hhKey)) hhKey
-            else s.embeddedWind.keys.filter { it <= hhKey }.maxOrNull()
+        // Embedded wind/solar from the anchor half-hour (or the latest row
+        // before it if NESO is lagging) — never the period containing the slot.
+        if (anchorKey != null) {
+            val embKey = if (s.embeddedWind.containsKey(anchorKey)) anchorKey
+            else s.embeddedWind.keys.filter { it <= anchorKey }.maxOrNull()
             if (embKey != null) {
                 fuelGw[FuelType.Wind] = (fuelGw[FuelType.Wind] ?: 0.0) + (s.embeddedWind[embKey] ?: 0.0) / 1000.0
                 fuelGw[FuelType.Solar] = (fuelGw[FuelType.Solar] ?: 0.0) + (s.embeddedSolar[embKey] ?: 0.0) / 1000.0
             }
         }
 
-        val emissions = anchorKey?.let { s.emissions[it] } ?: 0
-        val price = anchorKey?.let { s.price[it] } ?: 0.0
+        // Price/emissions from the same anchor, falling back to their most
+        // recent value ≤ anchor (the site propagates previous values forward).
+        val emissions = anchorKey?.let { k ->
+            s.emissions[k] ?: s.emissions.keys.filter { it <= k }.maxOrNull()?.let { s.emissions[it] }
+        } ?: 0
+        val price = anchorKey?.let { k ->
+            s.price[k] ?: s.price.keys.filter { it <= k }.maxOrNull()?.let { s.price[it] }
+        } ?: 0.0
         val label = (slotStart ?: now).let {
             ZonedDateTime.ofInstant(it, LONDON).format(HH_MM)
         }

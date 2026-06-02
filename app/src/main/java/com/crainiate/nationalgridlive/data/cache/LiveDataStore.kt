@@ -39,4 +39,11 @@ data class LiveDataStore(
     fun latestEmissionsInstant() = latestEmissionsIso?.let(ApiTime::parse)
     fun latestPriceInstant() = latestPriceIso?.let(ApiTime::parse)
     fun latestEmbeddedInstant() = latestEmbeddedIso?.let(ApiTime::parse)
+
+    // Earliest bucket per source — used to detect a "head gap" (the cache not
+    // reaching back to the start of the site-matching week window), e.g. on
+    // first launch, after an upgrade, or after a long offline stretch.
+    fun earliestGenerationInstant() = generation.keys.minOrNull()?.let(ApiTime::parse)
+    fun earliestEmissionsInstant() = emissions.keys.minOrNull()?.let(ApiTime::parse)
+    fun earliestPriceInstant() = price.keys.minOrNull()?.let(ApiTime::parse)
 }
