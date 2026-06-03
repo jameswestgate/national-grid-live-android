@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
@@ -45,6 +47,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crainiate.nationalgridlive.data.model.ChartGranularity
 import com.crainiate.nationalgridlive.data.model.FuelCategory
@@ -69,8 +72,9 @@ import kotlin.math.roundToInt
 
 data class ChartLine(val color: Color, val values: List<Double?>)
 
-/** One row of the selection tooltip: optional colour dot + label, plus a value. */
-class TooltipRow(val label: String?, val color: Color?, val value: String)
+/** One row of the selection tooltip: optional colour dot + label, the figure,
+ *  and a unit rendered smaller + grey (or hoisted to a heading when shared). */
+class TooltipRow(val label: String?, val color: Color?, val value: String, val unit: String = "")
 
 /**
  * Y-axis spec computed with the site's algorithm (`Axes.php`): ONE shared range
@@ -139,7 +143,8 @@ fun LineChart(
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().height(250.dp)) {
             Column(
-                Modifier.width(46.dp).fillMaxHeight().padding(end = 6.dp),
+                // end padding = the gap between the y-labels and the plot's edge.
+                Modifier.width(50.dp).fillMaxHeight().padding(end = 10.dp),
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -214,7 +219,7 @@ fun LineChart(
 private fun XAxisLabels(labels: List<Pair<Float, String>>, style: TextStyle, color: Color) {
     Layout(
         content = { labels.forEach { Text(it.second, style = style, color = color, maxLines = 1) } },
-        modifier = Modifier.fillMaxWidth().padding(start = 46.dp, top = 4.dp)
+        modifier = Modifier.fillMaxWidth().padding(start = 50.dp, top = 8.dp)
     ) { measurables, constraints ->
         val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0)) }
         val height = placeables.maxOfOrNull { it.height } ?: 0
@@ -227,37 +232,64 @@ private fun XAxisLabels(labels: List<Pair<Float, String>>, style: TextStyle, col
     }
 }
 
-/** The pinned selection's floating value card — the app's card surface and label styling. */
+/** The pinned selection's floating value card — compact, ~10% transparent so the
+ *  lines stay faintly visible through it. When every row shares one unit (the GW
+ *  charts) the unit is shown ONCE as a top-right heading (same style as the time)
+ *  and dropped from the rows; otherwise it trails the number, smaller + grey. */
 @Composable
 private fun TooltipCard(title: String, rows: List<TooltipRow>) {
+    val single = rows.size == 1 && rows[0].label == null
+    val sharedUnit = rows.firstOrNull()?.unit ?: ""
+    val unitHeading = !single && sharedUnit.isNotEmpty() && rows.all { it.unit == sharedUnit }
+    // Same style as the time / x-axis value, reused for the unit heading.
+    val headingStyle = MaterialTheme.typography.labelSmall
+    val grey = MaterialTheme.colorScheme.onSurfaceVariant
+
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f),
+        shape = RoundedCornerShape(9.dp),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 3.dp
+        shadowElevation = 2.dp
     ) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Column(
+            // Size to the widest row (NOT full width) — the weight() spacers then
+            // right-align the values/heading WITHIN that intrinsic width.
+            Modifier.width(IntrinsicSize.Max).padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = headingStyle, fontWeight = FontWeight.SemiBold, color = grey)
+                if (unitHeading) {
+                    Spacer(Modifier.weight(1f).widthIn(min = 8.dp))
+                    Text(sharedUnit, style = headingStyle, fontWeight = FontWeight.SemiBold, color = grey)
+                }
+            }
             rows.forEach { row ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (row.color != null) {
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(row.color))
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(row.color))
                         Spacer(Modifier.width(5.dp))
                     }
                     if (row.label != null) {
-                        Text(
-                            row.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(8.dp))
+                        Text(row.label, style = MaterialTheme.typography.labelSmall, color = grey)
+                        Spacer(Modifier.weight(1f).widthIn(min = 8.dp))
                     }
-                    Text(row.value, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        row.value,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    // Unit hoisted to the heading on the GW charts; otherwise show
+                    // it here, smaller still and grey (e.g. emissions "g").
+                    if (!unitHeading && row.unit.isNotEmpty()) {
+                        Text(
+                            row.unit,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = grey,
+                            modifier = Modifier.padding(start = 1.dp)
+                        )
+                    }
                 }
             }
         }
@@ -367,7 +399,7 @@ fun TrendsSection(
                 onSelect = { selection = "emissions" to it },
                 tooltip = { i ->
                     plotted.emissions.getOrNull(i)?.let { v ->
-                        tooltipTitle(dates[i], period) to listOf(TooltipRow(null, null, fmt(v, 0, suffix = "g")))
+                        tooltipTitle(dates[i], period) to listOf(TooltipRow(null, null, fmt(v, 0), unit = "g"))
                     }
                 }
             )
@@ -393,7 +425,7 @@ fun TrendsSection(
                 onSelect = { selection = "demand" to it },
                 tooltip = { i ->
                     val rows = demandEntries.mapNotNull { (label, color, values) ->
-                        values.getOrNull(i)?.let { TooltipRow(label, color, fmt(it, 1, suffix = "GW")) }
+                        values.getOrNull(i)?.let { TooltipRow(label, color, fmt(it, 1), unit = "GW") }
                     }
                     if (rows.isEmpty()) null else tooltipTitle(dates[i], period) to rows
                 }
@@ -411,8 +443,9 @@ fun TrendsSection(
                 onSelect = { selection = "generation" to it },
                 tooltip = { i ->
                     val rows = FuelType.entries.mapNotNull { fuel ->
-                        plotted.fuels[fuel]?.getOrNull(i)?.let {
-                            TooltipRow(fuel.displayName, FuelColors.color(fuel), fmt(it, 2, suffix = "GW"))
+                        // Skip lines that round to 0.00 (e.g. coal) — clutter only.
+                        plotted.fuels[fuel]?.getOrNull(i)?.takeIf { abs(it) >= 0.005 }?.let {
+                            TooltipRow(fuel.displayName, FuelColors.color(fuel), fmt(it, 2), unit = "GW")
                         }
                     }
                     if (rows.isEmpty()) null else tooltipTitle(dates[i], period) to rows
@@ -432,11 +465,12 @@ fun TrendsSection(
                 onSelect = { selection = "transfers" to it },
                 tooltip = { i ->
                     val rows = Interconnector.entries.mapNotNull { ic ->
-                        plotted.interconnectors[ic]?.getOrNull(i)?.let {
-                            TooltipRow(ic.displayName, FuelColors.color(ic), fmt(it, 2, suffix = "GW"))
+                        // Skip lines that round to 0.00 — clutter only.
+                        plotted.interconnectors[ic]?.getOrNull(i)?.takeIf { abs(it) >= 0.005 }?.let {
+                            TooltipRow(ic.displayName, FuelColors.color(ic), fmt(it, 2), unit = "GW")
                         }
-                    } + listOfNotNull(plotted.pumped.getOrNull(i)?.let {
-                        TooltipRow("Pumped storage", PumpedLineColor, fmt(it, 2, suffix = "GW"))
+                    } + listOfNotNull(plotted.pumped.getOrNull(i)?.takeIf { abs(it) >= 0.005 }?.let {
+                        TooltipRow("Pumped storage", PumpedLineColor, fmt(it, 2), unit = "GW")
                     })
                     if (rows.isEmpty()) null else tooltipTitle(dates[i], period) to rows
                 }
