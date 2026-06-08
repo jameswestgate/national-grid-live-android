@@ -36,33 +36,39 @@ import com.crainiate.nationalgridlive.MainActivity
 import com.crainiate.nationalgridlive.R
 import com.crainiate.nationalgridlive.data.model.FuelType
 import com.crainiate.nationalgridlive.data.model.GridSnapshot
+import android.content.res.Configuration
+import com.crainiate.nationalgridlive.data.settings.SettingsRepository
 import com.crainiate.nationalgridlive.ui.theme.FuelColors
+import com.crainiate.nationalgridlive.ui.theme.appColorScheme
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /* ---------------- colours ----------------
- * Solid surface matching the app's page background (the colour behind the cards /
- * nav). The app uses a FIXED brand scheme (dynamicColor=false → NOT Material You),
- * switching only on system light/dark — so the widget mirrors that with day/night
- * ColorProviders built from the same md_* tokens (Theme.kt / Color.kt). */
-private val WidgetBg: ColorProvider = ColorProvider(R.color.widget_background)
+ * Text uses the app's brand on-surface tokens (kept fixed, like the app keeps its
+ * `on*` colours when tempering). The BACKGROUND tracks the app's nav-bar surface —
+ * the tempered Material You `surfaceContainer` (see temperedSurfaceContainer), so
+ * the widget follows the wallpaper hue at the brand green's intensity, matching
+ * the app. */
 private val WidgetText: ColorProvider = ColorProvider(R.color.widget_text)
 private val WidgetTextDim: ColorProvider = ColorProvider(R.color.widget_text_dim)
 
 /* ---------------- shared scaffold + text styles ---------------- */
 
-/** Transparent, rounded widget surface that opens the app on tap. */
+/** Rounded widget surface (tempered nav-bar colour) that opens the app on tap. */
 @Composable
 private fun WidgetScaffold(content: @Composable () -> Unit) {
     val context = LocalContext.current
+    val dark = (context.resources.configuration.uiMode and
+        Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    // Match the app's nav-bar surface for the user's chosen Theme colour.
+    val surface = appColorScheme(SettingsRepository.colorScheme.value, dark, context).surfaceContainer
     GlanceTheme {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .appWidgetBackground()
-                // Solid surface matching the app's page background.
-                .background(WidgetBg)
+                .background(ColorProvider(surface))
                 .cornerRadius(20.dp)
                 .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
                 // Tight horizontal padding to claw back width for a narrower widget.
@@ -189,10 +195,11 @@ private fun sourceChips(snapshot: GridSnapshot): List<GlyphChip> = buildList {
 }
 
 private fun fuelIconRes(type: FuelType): Int = when (type) {
-    FuelType.Gas, FuelType.Coal -> R.drawable.ic_flame
+    FuelType.Gas -> R.drawable.ic_flame
+    FuelType.Coal -> R.drawable.ic_landscape
     FuelType.Wind -> R.drawable.ic_air
     FuelType.Solar -> R.drawable.ic_sun
     FuelType.Hydro -> R.drawable.ic_drop
-    FuelType.Nuclear -> R.drawable.ic_bolt
+    FuelType.Nuclear -> R.drawable.ic_atom
     FuelType.Biomass -> R.drawable.ic_leaf
 }

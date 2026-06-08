@@ -14,6 +14,20 @@ enum class AppTheme(val displayName: String) {
     }
 }
 
+/**
+ * User-selectable colour theme. Composes with [AppTheme] (light/dark).
+ *  - Green:   the fixed brand scheme (default)
+ *  - Sage:    soft muted teal re-tint
+ *  - Grey:    neutral greyscale re-tint
+ *  - Dynamic: tempered Material You (follows the wallpaper hue at brand intensity)
+ */
+enum class AppColorScheme(val displayName: String) {
+    Green("Green"),
+    Sage("Sage"),
+    Grey("Grey"),
+    Dynamic("Dynamic")
+}
+
 /** Which graphic the Generation card shows, mirroring iOS's Bar / Donut / None. */
 enum class GenerationVisualisation(val displayName: String) {
     Bar("Bar"),

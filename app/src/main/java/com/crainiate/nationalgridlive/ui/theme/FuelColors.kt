@@ -2,15 +2,18 @@ package com.crainiate.nationalgridlive.ui.theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Air
-import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Eco
+import androidx.compose.material.icons.rounded.Landscape
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Spa
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.unit.dp
 import com.crainiate.nationalgridlive.data.model.FuelCategory
 import com.crainiate.nationalgridlive.data.model.FuelType
 import com.crainiate.nationalgridlive.data.model.Interconnector
@@ -64,11 +67,12 @@ object FuelColors {
     }
 
     fun icon(fuel: FuelType): ImageVector = when (fuel) {
-        FuelType.Gas, FuelType.Coal -> Icons.Rounded.LocalFireDepartment
+        FuelType.Gas -> Icons.Rounded.LocalFireDepartment
+        FuelType.Coal -> Icons.Rounded.Landscape     // mountain (coal mine hill), like iOS
         FuelType.Wind -> Icons.Rounded.Air
         FuelType.Solar -> Icons.Rounded.WbSunny
         FuelType.Hydro -> Icons.Rounded.WaterDrop
-        FuelType.Nuclear -> Icons.Rounded.Bolt
+        FuelType.Nuclear -> AtomIcon                  // atom, like the iOS SF Symbol
         FuelType.Biomass -> Icons.Rounded.Spa
     }
 
@@ -86,4 +90,27 @@ object FuelColors {
         Interconnector.Belgium -> belgium
         Interconnector.Denmark -> denmark
     }
+}
+
+/**
+ * Atom glyph — three elliptical electron orbits (0/60/120) + a nucleus — matching
+ * the iOS SF Symbol "atom" used for Nuclear. The same path strings back the
+ * widget's res/drawable/ic_atom.xml, so the app and widget render identically.
+ * Drawn in black; call sites tint it via Icon(tint = …) to the fuel colour.
+ */
+val AtomIcon: ImageVector by lazy {
+    val orbit = addPathNodes("M1.5,12 a10.5,4 0 1,0 21,0 a10.5,4 0 1,0 -21,0")
+    val nucleus = addPathNodes("M10,12 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z")
+    ImageVector.Builder(
+        name = "Atom",
+        defaultWidth = 24.dp, defaultHeight = 24.dp,
+        viewportWidth = 24f, viewportHeight = 24f
+    ).apply {
+        listOf(0f, 60f, 120f).forEach { angle ->
+            addGroup(rotate = angle, pivotX = 12f, pivotY = 12f)
+            addPath(pathData = orbit, stroke = SolidColor(Color.Black), strokeLineWidth = 1.4f)
+            clearGroup()
+        }
+        addPath(pathData = nucleus, fill = SolidColor(Color.Black))
+    }.build()
 }

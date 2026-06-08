@@ -23,8 +23,9 @@ class MainActivity : ComponentActivity() {
         val startTab = intent?.getStringExtra("startTab")
         setContent {
             val theme by SettingsRepository.theme.collectAsStateWithLifecycle()
+            val colorScheme by SettingsRepository.colorScheme.collectAsStateWithLifecycle()
             val darkTheme = theme.isDark(isSystemInDarkTheme())
-            NationalGridLiveTheme(darkTheme = darkTheme) {
+            NationalGridLiveTheme(darkTheme = darkTheme, colorScheme = colorScheme) {
                 NationalGridApp(startTab = startTab)
             }
         }

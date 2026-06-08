@@ -14,6 +14,7 @@ object SettingsRepository {
 
     private const val PREFS = "settings"
     private const val KEY_THEME = "appTheme"
+    private const val KEY_COLOR_SCHEME = "colorScheme"
     private const val KEY_VISUALISATION = "generationVisualisation"
     private const val KEY_GRAPH_LEGENDS = "showGraphLegends"
 
@@ -21,6 +22,10 @@ object SettingsRepository {
 
     private val _theme = MutableStateFlow(AppTheme.System)
     val theme: StateFlow<AppTheme> = _theme.asStateFlow()
+
+    private val _colorScheme = MutableStateFlow(AppColorScheme.Green)
+    /** Settings → Appearance → "Theme colour" (Green / Sage / Grey / Wallpaper). */
+    val colorScheme: StateFlow<AppColorScheme> = _colorScheme.asStateFlow()
 
     private val _visualisation = MutableStateFlow(GenerationVisualisation.Bar)
     val visualisation: StateFlow<GenerationVisualisation> = _visualisation.asStateFlow()
@@ -33,6 +38,9 @@ object SettingsRepository {
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _theme.value = prefs.getString(KEY_THEME, null)?.let { runCatching { AppTheme.valueOf(it) }.getOrNull() }
             ?: AppTheme.System
+        _colorScheme.value = prefs.getString(KEY_COLOR_SCHEME, null)
+            ?.let { runCatching { AppColorScheme.valueOf(it) }.getOrNull() }
+            ?: AppColorScheme.Green
         _visualisation.value = prefs.getString(KEY_VISUALISATION, null)
             ?.let { runCatching { GenerationVisualisation.valueOf(it) }.getOrNull() }
             ?: GenerationVisualisation.Bar
@@ -42,6 +50,11 @@ object SettingsRepository {
     fun setTheme(value: AppTheme) {
         _theme.value = value
         prefs.edit().putString(KEY_THEME, value.name).apply()
+    }
+
+    fun setColorScheme(value: AppColorScheme) {
+        _colorScheme.value = value
+        prefs.edit().putString(KEY_COLOR_SCHEME, value.name).apply()
     }
 
     fun setVisualisation(value: GenerationVisualisation) {
