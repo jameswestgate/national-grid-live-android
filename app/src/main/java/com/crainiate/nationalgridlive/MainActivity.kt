@@ -10,6 +10,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crainiate.nationalgridlive.data.settings.SettingsRepository
 import com.crainiate.nationalgridlive.ui.NationalGridApp
 import com.crainiate.nationalgridlive.ui.theme.NationalGridLiveTheme
+import com.crainiate.nationalgridlive.ui.widget.GridWidgets
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,5 +28,12 @@ class MainActivity : ComponentActivity() {
                 NationalGridApp(startTab = startTab)
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Push the latest in-app data to any home-screen widgets (cache re-render,
+        // no fetch) — the analogue of iOS WidgetCenter.reloadAllTimelines().
+        CoroutineScope(Dispatchers.IO).launch { GridWidgets.updateAll(applicationContext) }
     }
 }

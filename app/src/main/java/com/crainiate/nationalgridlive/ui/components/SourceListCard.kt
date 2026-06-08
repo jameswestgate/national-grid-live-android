@@ -29,8 +29,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crainiate.nationalgridlive.data.model.GridSnapshot
+import com.crainiate.nationalgridlive.data.model.Interconnector
+import com.crainiate.nationalgridlive.data.settings.GenerationVisualisation
+import com.crainiate.nationalgridlive.data.settings.SettingsRepository
 import com.crainiate.nationalgridlive.ui.theme.FuelColors
+import kotlinx.coroutines.launch
 
 /** Elevated card with an inline header (title + total GW + "% of demand") and a list of rows. */
 @Composable
@@ -39,6 +50,8 @@ fun SourceListCard(
     totalGw: Double,
     percentOfDemand: Double,
     modifier: Modifier = Modifier,
+    /** Optional graphic between the header and the rows (e.g. the interconnector bar). */
+    headerGraphic: (@Composable () -> Unit)? = null,
     rows: @Composable ColumnScope.() -> Unit
 ) {
     ElevatedCard(
@@ -67,23 +80,51 @@ fun SourceListCard(
                 }
             }
             Spacer(Modifier.size(6.dp))
+            if (headerGraphic != null) {
+                headerGraphic()
+                Spacer(Modifier.size(14.dp))
+            }
             rows()
         }
     }
 }
 
-/** The Interconnectors card — 6 per-country net flows (alphabetical). */
+/** The Interconnectors card — 6 per-country net flows (alphabetical), with a
+ *  diverging bar header under the "Bar" chart style. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun InterconnectorsCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
     if (snapshot.interconnectors.isEmpty()) return
     // The Interconnectors total is just the 6 countries; pumped lives in the Storage
     // card. (The demand equation's "Transfers" = this + pumped — see transfersGw.)
     val total = snapshot.interconnectors.sumOf { it.gigawatts }
-    SourceListCard("Interconnectors", total, snapshot.shareOfDemand(total), modifier) {
+    val absTotal = snapshot.interconnectors.sumOf { kotlin.math.abs(it.gigawatts) }
+    val visualisation by SettingsRepository.visualisation.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val requesters = remember { Interconnector.entries.associateWith { BringIntoViewRequester() } }
+    // The diverging bar has no donut equivalent → only shown under the Bar style.
+    val flows = snapshot.interconnectors.map { it.interconnector to it.gigawatts }
+    val showBar = visualisation == GenerationVisualisation.Bar &&
+        flows.any { kotlin.math.abs(it.second) > 0.0001 }
+
+    SourceListCard(
+        "Interconnectors", total, snapshot.shareOfDemand(total), modifier,
+        headerGraphic = if (showBar) {
+            {
+                InterconnectorBars(flows, onSelect = { ic ->
+                    scope.launch { requesters.getValue(ic).bringIntoView() }
+                })
+            }
+        } else null
+    ) {
         snapshot.interconnectors.forEachIndexed { index, reading ->
             if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(horizontal = 4.dp))
             val color = FuelColors.color(reading.interconnector)
-            val barFraction = if (total != 0.0) (reading.gigawatts / total).toFloat() else 0f
+            // Row bar = this country's share of TOTAL interconnector movement
+            // (|flow| / Σ|flows|) — same basis as the diverging header bar, so the
+            // two read consistently. (iOS still uses |share of demand| here — a
+            // known bug to align later.)
+            val barFraction = if (absTotal > 0.0) (kotlin.math.abs(reading.gigawatts) / absTotal).toFloat() else 0f
             SourceRow(
                 icon = Icons.AutoMirrored.Rounded.CompareArrows,
                 iconColor = color,
@@ -91,7 +132,8 @@ fun InterconnectorsCard(snapshot: GridSnapshot, modifier: Modifier = Modifier) {
                 valueGw = reading.gigawatts,
                 percentOfDemand = snapshot.shareOfDemand(reading.gigawatts),
                 barFraction = barFraction,
-                barColor = color
+                barColor = color,
+                modifier = Modifier.bringIntoViewRequester(requesters.getValue(reading.interconnector))
             )
         }
     }

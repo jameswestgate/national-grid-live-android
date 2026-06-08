@@ -64,6 +64,18 @@ class LiveDataAggregator(
         return snapshot
     }
 
+    /**
+     * Compose the current reading from the on-disk cache ONLY — no network.
+     * For the home-screen widgets (same app sandbox): instant render of the last
+     * known data; null when the cache is empty (the widget then shows a
+     * placeholder and a background fetch populates it). */
+    suspend fun cachedCurrent(): GridSnapshot? {
+        val s = store ?: cache.read()?.also { store = it } ?: return null
+        if (s.generation.isEmpty()) return null
+        return runCatching { composeCurrent(s, Instant.now()) }
+            .getOrNull()?.takeIf { it.generationGw > 0.0 }
+    }
+
     suspend fun window(period: Period): GridSnapshot {
         val s = refreshed()
         val (from, to) = windowBounds(s, period)

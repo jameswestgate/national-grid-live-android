@@ -43,6 +43,9 @@ class RemoteGridRepository(
         fallback.live()
     }
 
+    /** Cache-only current reading for the widgets (no network); null if uncached. */
+    override suspend fun cachedLive(): GridSnapshot? = aggregator.cachedCurrent()
+
     override suspend fun historic(period: Period): GridSnapshot = when (period) {
         Period.Day, Period.Week -> try {
             aggregator.window(period)

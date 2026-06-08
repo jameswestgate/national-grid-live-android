@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crainiate.nationalgridlive.data.model.FuelCategory
 import com.crainiate.nationalgridlive.data.model.FuelType
 import com.crainiate.nationalgridlive.data.model.GridSnapshot
+import com.crainiate.nationalgridlive.data.model.Interconnector
 import com.crainiate.nationalgridlive.data.settings.GenerationVisualisation
 import com.crainiate.nationalgridlive.data.settings.SettingsRepository
 import com.crainiate.nationalgridlive.ui.theme.FuelColors
@@ -171,6 +173,105 @@ private fun BarRow(segments: List<BarSeg>, onSelect: (GenerationSelection) -> Un
                     )
                 }
             }
+        }
+    }
+}
+
+/* ---------------- interconnector diverging bar ---------------- */
+
+/**
+ * A single-row diverging proportional bar for interconnector flows (no donut
+ * equivalent). The full width represents Σ|flows|: exports (negative) sit on the
+ * LEFT as their abs value, imports (positive) on the RIGHT, separated by a small
+ * gap at the zero-crossing. Each segment is one country, coloured by its swatch
+ * and labelled where the name fits; largest magnitudes flank the gap. Tapping a
+ * segment calls [onSelect] — the card scrolls that country's row into view.
+ * Outer ends are rounded; the divider-facing ends are square so the two halves
+ * meet in a clean seam.
+ */
+@Composable
+fun InterconnectorBars(
+    flows: List<Pair<Interconnector, Double>>,
+    onSelect: (Interconnector) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val negatives = flows.filter { it.second < 0 }.sortedBy { kotlin.math.abs(it.second) }
+    val positives = flows.filter { it.second > 0 }.sortedByDescending { kotlin.math.abs(it.second) }
+    val total = flows.sumOf { kotlin.math.abs(it.second) }
+    if (total <= 0.0) return
+    val bothSides = negatives.isNotEmpty() && positives.isNotEmpty()
+    val negTotal = negatives.sumOf { kotlin.math.abs(it.second) }.toFloat()
+    val posTotal = positives.sumOf { kotlin.math.abs(it.second) }.toFloat()
+
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+    val density = LocalDensity.current
+    val gap = 6.dp
+
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val totalPx = with(density) { maxWidth.toPx() }
+        val gapPx = with(density) { (if (bothSides) gap else 0.dp).toPx() }
+        val padPx = with(density) { 8.dp.toPx() }
+        val unit = ((totalPx - gapPx) / total).toFloat()
+
+        Row(Modifier.fillMaxWidth().height(30.dp)) {
+            if (negatives.isNotEmpty()) {
+                Row(
+                    Modifier.weight(negTotal).fillMaxHeight()
+                        .clip(halfShape(leading = true, trailing = !bothSides))
+                ) {
+                    negatives.forEach { (ic, gw) ->
+                        val segPx = kotlin.math.abs(gw).toFloat() * unit
+                        val fits = measurer.measure(ic.displayName, labelStyle).size.width + padPx <= segPx
+                        segment(ic, kotlin.math.abs(gw).toFloat(), fits, onSelect)
+                    }
+                }
+            }
+            if (bothSides) Spacer(Modifier.width(gap))
+            if (positives.isNotEmpty()) {
+                Row(
+                    Modifier.weight(posTotal).fillMaxHeight()
+                        .clip(halfShape(leading = !bothSides, trailing = true))
+                ) {
+                    positives.forEach { (ic, gw) ->
+                        val segPx = gw.toFloat() * unit
+                        val fits = measurer.measure(ic.displayName, labelStyle).size.width + padPx <= segPx
+                        segment(ic, gw.toFloat(), fits, onSelect)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun halfShape(leading: Boolean, trailing: Boolean) = RoundedCornerShape(
+    topStart = if (leading) 6.dp else 0.dp,
+    topEnd = if (trailing) 6.dp else 0.dp,
+    bottomEnd = if (trailing) 6.dp else 0.dp,
+    bottomStart = if (leading) 6.dp else 0.dp
+)
+
+@Composable
+private fun RowScope.segment(
+    ic: Interconnector,
+    weight: Float,
+    showLabel: Boolean,
+    onSelect: (Interconnector) -> Unit
+) {
+    val color = FuelColors.color(ic)
+    Box(
+        Modifier.weight(weight).fillMaxHeight().background(color).clickable { onSelect(ic) },
+        contentAlignment = Alignment.Center
+    ) {
+        if (showLabel) {
+            Text(
+                ic.displayName,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = onColor(color),
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.padding(horizontal = 3.dp)
+            )
         }
     }
 }

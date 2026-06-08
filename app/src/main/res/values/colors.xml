@@ -4,4 +4,12 @@
          there is no flash before Compose draws. -->
     <color name="surface_light">#FBFDF6</color>
     <color name="surface_dark">#101510</color>
+
+    <!-- Live Minimal widget surface + text. Background = the app's surfaceContainer
+         token (the green under the navigation bar); text = onSurface / onSurfaceVariant.
+         The app uses a FIXED brand scheme (not Material You), so these are fixed too;
+         values-night/colors.xml supplies the dark set. -->
+    <color name="widget_background">#EFF3E9</color>
+    <color name="widget_text">#181D16</color>
+    <color name="widget_text_dim">#424940</color>
 </resources>

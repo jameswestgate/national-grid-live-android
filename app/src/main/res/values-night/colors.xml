@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark variants: background = surfaceContainer (nav bar), text = on* tokens. -->
+    <color name="widget_background">#1C211A</color>
+    <color name="widget_text">#E0E4DA</color>
+    <color name="widget_text_dim">#C2C9BC</color>
+</resources>

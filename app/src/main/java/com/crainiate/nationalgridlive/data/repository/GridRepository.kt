@@ -19,6 +19,13 @@ interface GridRepository {
     /** Latest near-real-time reading (last settlement period). */
     suspend fun live(): GridSnapshot
 
+    /**
+     * The latest reading composed from the on-disk cache only — no network.
+     * Used by the home-screen widgets for an instant render in the shared app
+     * sandbox; null when nothing has been cached yet.
+     */
+    suspend fun cachedLive(): GridSnapshot? = null
+
     /** Period-averaged reading for the Historic screen. */
     suspend fun historic(period: Period): GridSnapshot
 

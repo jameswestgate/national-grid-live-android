@@ -10,4 +10,7 @@
     <string name="demand">Demand</string>
     <string name="transfers">Transfers</string>
     <string name="of_demand">%1$s%% of demand</string>
+
+    <string name="widget_minimal_label">Live Minimal</string>
+    <string name="widget_minimal_desc">Demand, price and carbon with the top generation sources.</string>
 </resources>
