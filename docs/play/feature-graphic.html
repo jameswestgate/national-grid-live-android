@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  :root{
+    --bg1:#16191c; --bg2:#101214;
+    --title:#FFFFFF; --muted:#A0A6AB; --accent:#46C16E;
+    --phone-bezel:#05070a; --glow:.55;
+  }
+  body.light{
+    --bg1:#F4F5F2; --bg2:#E8EAE5;
+    --title:#191C18; --muted:#5C625B; --accent:#2E7D4F;
+    --phone-bezel:#0c0e10; --glow:.30;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1024px;height:500px;overflow:hidden}
+  .frame{
+    position:relative;width:1024px;height:500px;
+    font-family:"SF Pro Display","Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(900px 520px at 86% 64%, rgba(48,176,199,calc(var(--glow)*0.5)) 0%, rgba(0,122,255,0) 60%),
+      radial-gradient(700px 480px at 78% 30%, rgba(52,199,89,calc(var(--glow)*0.45)) 0%, rgba(52,199,89,0) 58%),
+      linear-gradient(150deg, var(--bg1) 0%, var(--bg2) 100%);
+    overflow:hidden;
+  }
+  /* faint grid lines, evokes the "grid" */
+  .frame::before{
+    content:"";position:absolute;inset:0;opacity:.05;
+    background-image:linear-gradient(var(--title) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--title) 1px,transparent 1px);
+    background-size:44px 44px;mask:radial-gradient(620px 420px at 80% 50%,#000 0%,transparent 75%);
+    -webkit-mask:radial-gradient(620px 420px at 80% 50%,#000 0%,transparent 75%);
+  }
+
+  .left{position:absolute;left:74px;top:0;height:500px;width:560px;
+        display:flex;flex-direction:column;justify-content:center;gap:26px;z-index:2}
+  .lockup{display:flex;align-items:center;gap:22px}
+  .icon{width:96px;height:96px;filter:drop-shadow(0 8px 22px rgba(0,0,0,.35));flex:0 0 auto}
+  .wordmark{line-height:1.02}
+  .wordmark .l1{font-size:40px;font-weight:800;color:var(--title);letter-spacing:-.5px}
+  .wordmark .l2{font-size:40px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
+  .tagline{font-size:25px;font-weight:500;color:var(--muted);max-width:480px;letter-spacing:.1px}
+  .tagline b{color:var(--title);font-weight:600}
+
+  /* generation-mix motif bar */
+  .bar{display:flex;width:430px;height:16px;border-radius:8px;overflow:hidden;
+       box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .bar > i{height:100%}
+
+  /* phone mockup */
+  .phone{position:absolute;top:34px;right:96px;width:222px;height:432px;
+         background:var(--phone-bezel);border-radius:34px;
+         box-shadow:0 26px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06) inset;
+         z-index:2}
+  .phone .screen{position:absolute;inset:9px;border-radius:26px;overflow:hidden;background:#000}
+  .phone .screen img{width:100%;height:100%;object-fit:cover;object-position:top}
+  .phone::after{content:"";position:absolute;left:50%;top:13px;transform:translateX(-50%);
+                width:54px;height:5px;border-radius:3px;background:rgba(255,255,255,.18);z-index:3}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="left">
+    <div class="lockup">
+      <svg class="icon" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#34C759"/>
+            <stop offset="0.5" stop-color="#30B0C7"/>
+            <stop offset="1" stop-color="#007AFF"/>
+          </linearGradient>
+          <clipPath id="r"><rect width="108" height="108" rx="24" ry="24"/></clipPath>
+        </defs>
+        <g clip-path="url(#r)">
+          <rect width="108" height="108" fill="url(#g)"/>
+          <path fill="#FFFFFF" d="M55.73,21.05 A33.00,33.00 0 0 1 71.39,82.05 L65.07,71.85 A21.00,21.00 0 0 0 55.10,33.03 Z M68.36,83.71 A33.00,33.00 0 0 1 25.95,71.39 L36.15,65.07 A21.00,21.00 0 0 0 63.14,72.91 Z M24.29,68.36 A33.00,33.00 0 0 1 27.51,34.32 L37.14,41.48 A21.00,21.00 0 0 0 35.09,63.14 Z M29.71,31.66 A33.00,33.00 0 0 1 52.27,21.05 L52.90,33.03 A21.00,21.00 0 0 0 38.54,39.79 Z"/>
+          <path fill="#FFFFFF" d="M60.40,34.00 L42.00,56.40 L53.20,56.40 L47.60,74.00 L66.00,50.80 L54.80,50.80 Z"/>
+        </g>
+      </svg>
+      <div class="wordmark">
+        <div class="l1">National Grid:</div>
+        <div class="l2">Live</div>
+      </div>
+    </div>
+
+    <div class="tagline">See how Great Britain is powered <b>right now</b> — the live generation mix, carbon and demand.</div>
+
+    <div class="bar">
+      <i style="width:25%;background:#EE9944"></i>
+      <i style="width:23%;background:#99DD55"></i>
+      <i style="width:8%;background:#EEDD00"></i>
+      <i style="width:14%;background:#0099CC"></i>
+      <i style="width:7%;background:#22CCBB"></i>
+      <i style="width:8%;background:#3366BB"></i>
+      <i style="width:15%;background:#AA3355"></i>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="screen"><img id="shot" src="file:///Users/jameswestgate/Desktop/ngl-play-screenshots/play-ready/01-live-bar.png" alt=""></div>
+  </div>
+</div>
+<script>
+  var p = new URLSearchParams(location.search);
+  if (p.has('light')) {
+    document.body.classList.add('light');
+    // dark screenshot pops on a light background
+    document.getElementById('shot').src =
+      'file:///Users/jameswestgate/Desktop/ngl-play-screenshots/play-ready/06-live-dark.png';
+  }
+</script>
+</body>
+</html>

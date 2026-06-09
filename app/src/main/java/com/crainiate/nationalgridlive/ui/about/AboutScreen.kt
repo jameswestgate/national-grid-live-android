@@ -59,6 +59,14 @@ fun AboutScreen() {
         ScreenTitle("About")
 
         AboutCard {
+            SectionTitle("About this app")
+            Body("National Grid: Live is an independent app that shows publicly available data about how Great Britain's electricity is generated. It is not affiliated with, endorsed by, or connected to National Grid plc, the National Energy System Operator (NESO), Elexon, or any government body, and it does not represent or provide any government service.")
+            Body("All of the data shown is open and free to use. Live readings are fetched directly from three public APIs; historical aggregates are served by an open backfill snapshot.")
+            SOURCES.forEach { Bullet(it) }
+            Body("Inspired by National Grid: Live by Kate Morley (grid.iamkate.com), released under CC0 1.0 Universal.")
+        }
+
+        AboutCard {
             SectionTitle("The energy transition")
             PARAGRAPHS.forEach { Body(it) }
             Text(
@@ -69,17 +77,6 @@ fun AboutScreen() {
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 10.dp)
             )
             MilestonesTable()
-        }
-
-        AboutCard {
-            SectionTitle("Data")
-            Body("Live data is fetched directly from three public APIs. Historical aggregates are served by an open backfill snapshot.")
-            SOURCES.forEach { Bullet(it) }
-        }
-
-        AboutCard {
-            SectionTitle("Original design")
-            Body("Inspired by National Grid: Live by Kate Morley (grid.iamkate.com), released under CC0 1.0 Universal.")
         }
     }
 }
